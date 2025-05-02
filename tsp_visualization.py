@@ -16,7 +16,7 @@ def tsp_with_visualization(cost, city_positions):
     screen.fill(WHITE)
     draw_cities(city_positions)
     pygame.display.flip()
-    time.sleep(0.5)
+    time.sleep(1.0)  # Increased initial delay
 
     result = total_cost_with_visualization(
         1, 0, n, cost, dp, city_positions, current_path
@@ -39,7 +39,10 @@ def tsp_with_visualization(cost, city_positions):
 
     screen.blit(table_surf, (WIDTH - 320, 20))
     pygame.display.flip()
-    time.sleep(1)
+    # Show final optimal path with emphasis
+    draw_final_path(city_positions, optimal_path)
+    pygame.display.flip()
+    time.sleep(2)  # Longer pause to see final result
 
     return result
 
@@ -58,7 +61,7 @@ def total_cost_with_visualization(
         draw_cities(city_positions)
         draw_path(city_positions, next_path)
         pygame.display.flip()
-        time.sleep(0.3)
+        time.sleep(0.5)  # Increased delay for return to origin
 
         return cost[curr][0]
 
@@ -72,7 +75,7 @@ def total_cost_with_visualization(
             draw_cities(city_positions)
             draw_path(city_positions, next_path)
             pygame.display.flip()
-            time.sleep(0.2)
+            time.sleep(0.4)  # Increased delay for trying cities
 
             cost_through_i = cost[curr][i] + total_cost_with_visualization(
                 mask | (1 << i), i, n, cost, dp, city_positions, next_path
@@ -162,6 +165,42 @@ def draw_path(positions, path):
         pygame.draw.line(screen, RED, start_pos, end_pos, 2)
 
 
+def draw_final_path(positions, path):
+    """Draw the final optimal path with emphasis"""
+    if not path:
+        return
+
+    # Draw bold blue line for the optimal path
+    for i in range(len(path) - 1):
+        start_pos = positions[path[i]]
+        end_pos = positions[path[i + 1]]
+        # Draw a thicker line in blue
+        pygame.draw.line(screen, BLUE, start_pos, end_pos, 4)
+
+        # Add direction arrows
+        mid_x = (start_pos[0] + end_pos[0]) // 2
+        mid_y = (start_pos[1] + end_pos[1]) // 2
+
+        # Calculate direction for arrow
+        dx = end_pos[0] - start_pos[0]
+        dy = end_pos[1] - start_pos[1]
+        length = math.sqrt(dx * dx + dy * dy)
+        if length > 0:
+            udx = dx / length * 15  # Arrow size
+            udy = dy / length * 15
+
+            # Draw arrow head
+            pygame.draw.polygon(
+                screen,
+                BLUE,
+                [
+                    (mid_x, mid_y),
+                    (mid_x - udx + udy * 0.5, mid_y - udy - udx * 0.5),
+                    (mid_x - udx - udy * 0.5, mid_y - udy + udx * 0.5),
+                ],
+            )
+
+
 def visualize_tsp():
     # Generate a cost matrix based on Euclidean distances
     cost = [[0 for _ in range(len(city_positions))] for _ in range(len(city_positions))]
@@ -189,21 +228,38 @@ def main():
 
     running = True
     result = None
+    optimal_path = None
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        screen.fill(WHITE)
-        draw_cities(city_positions)
-
         if not result:
             result = visualize_tsp()
-
+            # After visualization is complete, get the optimal path
+            optimal_path = reconstruct_path(
+                [[int(math.sqrt((city_positions[i][0] - city_positions[j][0]) ** 2 + 
+                               (city_positions[i][1] - city_positions[j][1]) ** 2))
+                  for j in range(len(city_positions))]
+                 for i in range(len(city_positions))],
+                [[-1] * (1 << len(city_positions)) for _ in range(len(city_positions))]
+            )
+        
+        # Keep showing the final state
+        screen.fill(WHITE)
+        draw_cities(city_positions)
+        if optimal_path:
+            draw_final_path(city_positions, optimal_path)
+        
         # Display final result
         result_text = font.render(f"Optimal Cost: {result}", True, BLACK)
         screen.blit(result_text, (20, HEIGHT - 50))
+        
+        # Display path sequence
+        if optimal_path:
+            path_text = font.render(f"Path: {' → '.join(map(str, optimal_path))}", True, BLACK)
+            screen.blit(path_text, (20, HEIGHT - 80))
 
         pygame.display.flip()
 
