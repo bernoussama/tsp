@@ -40,7 +40,7 @@ def tsp_with_visualization(cost, city_positions):
     screen.blit(table_surf, (WIDTH - 320, 20))
     pygame.display.flip()
     # Show final optimal path with emphasis
-    draw_final_path(city_positions, optimal_path)
+    draw_final_path(city_positions, optimal_path, cost)
     pygame.display.flip()
     time.sleep(2)  # Longer pause to see final result
 
@@ -59,7 +59,7 @@ def total_cost_with_visualization(
         next_path = current_path + [0]
         screen.fill(WHITE)
         draw_cities(city_positions)
-        draw_path(city_positions, next_path)
+        draw_path(city_positions, next_path, cost)
         pygame.display.flip()
         time.sleep(0.5)  # Increased delay for return to origin
 
@@ -154,18 +154,43 @@ def draw_cities(positions):
         screen.blit(text, (x - 5, y - 8))
 
 
-def draw_path(positions, path):
-    """Draw the current path between cities"""
+def calculate_path_cost(path, cost_matrix):
+    """Calculate the cost of a path"""
+    total = 0
+    for i in range(len(path) - 1):
+        total += cost_matrix[path[i]][path[i + 1]]
+    return total
+
+
+def draw_path(positions, path, cost_matrix=None):
+    """Draw the current path between cities with costs"""
     if not path:
         return
 
+    cumulative_cost = 0
     for i in range(len(path) - 1):
         start_pos = positions[path[i]]
         end_pos = positions[path[i + 1]]
         pygame.draw.line(screen, RED, start_pos, end_pos, 2)
 
+        if cost_matrix:
+            # Calculate edge cost and cumulative cost
+            edge_cost = cost_matrix[path[i]][path[i + 1]]
+            cumulative_cost += edge_cost
 
-def draw_final_path(positions, path):
+            # Draw edge cost
+            mid_x = (start_pos[0] + end_pos[0]) // 2
+            mid_y = (start_pos[1] + end_pos[1]) // 2
+            cost_text = font.render(f"{edge_cost}", True, RED)
+            screen.blit(cost_text, (mid_x, mid_y))
+
+            # Draw cumulative cost
+            if i == len(path) - 2:  # Last edge
+                cum_text = font.render(f"Total: {cumulative_cost}", True, RED)
+                screen.blit(cum_text, (20, HEIGHT - 110))
+
+
+def draw_final_path(positions, path, cost_matrix=None):
     """Draw the final optimal path with emphasis"""
     if not path:
         return
@@ -176,6 +201,16 @@ def draw_final_path(positions, path):
         end_pos = positions[path[i + 1]]
         # Draw a thicker line in blue
         pygame.draw.line(screen, BLUE, start_pos, end_pos, 4)
+
+        if cost_matrix:
+            # Calculate edge cost
+            edge_cost = cost_matrix[path[i]][path[i + 1]]
+
+            # Draw edge cost
+            mid_x = (start_pos[0] + end_pos[0]) // 2
+            mid_y = (start_pos[1] + end_pos[1]) // 2
+            cost_text = font.render(f"{edge_cost}", True, BLUE)
+            screen.blit(cost_text, (mid_x, mid_y))
 
         # Add direction arrows
         mid_x = (start_pos[0] + end_pos[0]) // 2
@@ -216,7 +251,7 @@ def visualize_tsp():
 
     # Modified TSP function (you'll need to create this)
     result = tsp_with_visualization(cost, city_positions)
-    return result
+    return result, cost  # Return both the result and cost matrix
 
 
 # Main function
@@ -229,6 +264,7 @@ def main():
     running = True
     result = None
     optimal_path = None
+    cost_matrix = None
 
     while running:
         for event in pygame.event.get():
@@ -236,29 +272,39 @@ def main():
                 running = False
 
         if not result:
-            result = visualize_tsp()
+            result, cost_matrix = visualize_tsp()
             # After visualization is complete, get the optimal path
             optimal_path = reconstruct_path(
-                [[int(math.sqrt((city_positions[i][0] - city_positions[j][0]) ** 2 + 
-                               (city_positions[i][1] - city_positions[j][1]) ** 2))
-                  for j in range(len(city_positions))]
-                 for i in range(len(city_positions))],
-                [[-1] * (1 << len(city_positions)) for _ in range(len(city_positions))]
+                [
+                    [
+                        int(
+                            math.sqrt(
+                                (city_positions[i][0] - city_positions[j][0]) ** 2
+                                + (city_positions[i][1] - city_positions[j][1]) ** 2
+                            )
+                        )
+                        for j in range(len(city_positions))
+                    ]
+                    for i in range(len(city_positions))
+                ],
+                [[-1] * (1 << len(city_positions)) for _ in range(len(city_positions))],
             )
-        
+
         # Keep showing the final state
         screen.fill(WHITE)
         draw_cities(city_positions)
         if optimal_path:
             draw_final_path(city_positions, optimal_path)
-        
+
         # Display final result
         result_text = font.render(f"Optimal Cost: {result}", True, BLACK)
         screen.blit(result_text, (20, HEIGHT - 50))
-        
+
         # Display path sequence
         if optimal_path:
-            path_text = font.render(f"Path: {' → '.join(map(str, optimal_path))}", True, BLACK)
+            path_text = font.render(
+                f"Path: {' → '.join(map(str, optimal_path))}", True, BLACK
+            )
             screen.blit(path_text, (20, HEIGHT - 80))
 
         pygame.display.flip()

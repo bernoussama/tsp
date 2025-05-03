@@ -2,11 +2,9 @@ from typing import TypeAlias
 import sys
 
 Matrix: TypeAlias = list[list[int]]
-Cost: TypeAlias = Matrix
-Memo: TypeAlias = Matrix
 
 
-def totalCost(mask: int, curr: int, n: int, cost: Cost, dp) -> int:
+def totalCost(mask: int, curr: int, n: int, cost: Matrix, dp: Matrix) -> int:
     if dp[curr][mask] != -1:
         return dp[curr][mask]
 
@@ -27,7 +25,7 @@ def totalCost(mask: int, curr: int, n: int, cost: Cost, dp) -> int:
     return cout
 
 
-def tsp(cost: Cost) -> int:
+def tsp(cost: Matrix) -> int:
     n = len(cost)
     dp = [[-1] * (1 << n) for _ in range(n)]
     return totalCost(1, 0, n, cost, dp)
